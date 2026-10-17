@@ -1,64 +1,58 @@
 import tkinter as tk
 from tkinter import ttk
 
+import sympy as sp
 
-class NewtonRaphsonApp:
-    def __init__(self, root):
-        self.root = root
 
-        self.root.title("NewtonLab | Newton-Raphson")
-        self.root.geometry("1000x650")
+x = sp.symbols("x")
 
-        self.build_ui()
 
-    def build_ui(self):
-        title = ttk.Label(
-            self.root,
-            text="NewtonLab",
-            font=("Helvetica Neue", 24, "bold")
-        )
-        title.pack(pady=(30, 5))
+def parse_function(function_text):
+    """
+    Mengubah input fungsi dari pengguna
+    menjadi ekspresi matematika SymPy.
+    """
 
-        subtitle = ttk.Label(
-            self.root,
-            text="Kalkulator Metode Newton-Raphson"
-        )
-        subtitle.pack()
+    function_text = function_text.strip()
 
-        ttk.Label(
-            self.root,
-            text="Praktikum Komputasi Numerik C"
-        ).pack(pady=5)
-
-        separator = ttk.Separator(
-            self.root,
-            orient="horizontal"
-        )
-        separator.pack(
-            fill="x",
-            padx=40,
-            pady=20
+    if not function_text:
+        raise ValueError(
+            "Fungsi f(x) tidak boleh kosong."
         )
 
-        ttk.Label(
-            self.root,
-            text="Aplikasi siap digunakan."
-        ).pack(pady=50)
+    function_text = function_text.replace(
+        "^",
+        "**"
+    )
 
+    allowed_functions = {
+        "sin": sp.sin,
+        "cos": sp.cos,
+        "tan": sp.tan,
+        "exp": sp.exp,
+        "log": sp.log,
+        "sqrt": sp.sqrt,
+        "abs": sp.Abs
+    }
 
-def main():
-    root = tk.Tk()
+    local_dict = {
+        "x": x,
+        "pi": sp.pi,
+        "E": sp.E,
+        **allowed_functions
+    }
 
-    app = NewtonRaphsonApp(root)
+    try:
+        expression = sp.sympify(
+            function_text,
+            locals=local_dict
+        )
+    except Exception as error:
+        raise ValueError(
+            "Format fungsi tidak valid."
+        ) from error
 
-    root.mainloop()
-
-
-if __name__ == "__main__":
-    main()
-
-import tkinter as tk
-from tkinter import ttk
+    return expression
 
 
 class NewtonRaphsonApp:
@@ -211,7 +205,8 @@ class NewtonRaphsonApp:
 
         self.calculate_button = ttk.Button(
             input_frame,
-            text="Hitung Akar"
+            text="Hitung Akar",
+            command=self.test_function
         )
         self.calculate_button.grid(
             row=8,
@@ -236,6 +231,23 @@ class NewtonRaphsonApp:
         ).pack(
             pady=30
         )
+
+    def test_function(self):
+        try:
+            function = parse_function(
+                self.function_entry.get()
+            )
+
+            print(
+                "Fungsi:",
+                function
+            )
+
+        except ValueError as error:
+            print(
+                "Error:",
+                error
+            )
 
 
 def main():
