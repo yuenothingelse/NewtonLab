@@ -8,11 +8,6 @@ x = sp.symbols("x")
 
 
 def parse_function(function_text):
-    """
-    Mengubah input fungsi dari pengguna
-    menjadi ekspresi matematika SymPy.
-    """
-
     function_text = function_text.strip()
 
     if not function_text:
@@ -122,7 +117,6 @@ class NewtonRaphsonApp:
             column=0,
             pady=(0, 15)
         )
-
         self.function_entry.insert(
             0,
             "x^2 - 4"
@@ -147,11 +141,7 @@ class NewtonRaphsonApp:
             column=0,
             pady=(0, 15)
         )
-
-        self.x0_entry.insert(
-            0,
-            "3"
-        )
+        self.x0_entry.insert(0, "3")
 
         ttk.Label(
             input_frame,
@@ -172,7 +162,6 @@ class NewtonRaphsonApp:
             column=0,
             pady=(0, 15)
         )
-
         self.tolerance_entry.insert(
             0,
             "0.000001"
@@ -197,7 +186,6 @@ class NewtonRaphsonApp:
             column=0,
             pady=(0, 20)
         )
-
         self.max_iteration_entry.insert(
             0,
             "50"
@@ -206,7 +194,7 @@ class NewtonRaphsonApp:
         self.calculate_button = ttk.Button(
             input_frame,
             text="Hitung Akar",
-            command=self.test_function
+            command=self.calculate
         )
         self.calculate_button.grid(
             row=8,
@@ -232,18 +220,117 @@ class NewtonRaphsonApp:
             pady=30
         )
 
-    def test_function(self):
+    def calculate_newton_raphson(
+        self,
+        function,
+        x0,
+        tolerance,
+        max_iterations
+    ):
+        derivative = sp.diff(
+            function,
+            x
+        )
+
+        f = sp.lambdify(
+            x,
+            function,
+            "numpy"
+        )
+
+        df = sp.lambdify(
+            x,
+            derivative,
+            "numpy"
+        )
+
+        xn = x0
+        iterations = []
+
+        for n in range(
+            1,
+            max_iterations + 1
+        ):
+            fx = float(f(xn))
+            dfx = float(df(xn))
+
+            if abs(dfx) < 1e-12:
+                raise ValueError(
+                    "Turunan mendekati nol."
+                )
+
+            x_next = (
+                xn -
+                fx / dfx
+            )
+
+            error = abs(
+                x_next - xn
+            )
+
+            iterations.append({
+                "iteration": n,
+                "xn": xn,
+                "fx": fx,
+                "dfx": dfx,
+                "x_next": x_next,
+                "error": error
+            })
+
+            xn = x_next
+
+            if error <= tolerance:
+                break
+
+        return (
+            xn,
+            iterations,
+            derivative
+        )
+
+    def calculate(self):
         try:
             function = parse_function(
                 self.function_entry.get()
             )
 
-            print(
-                "Fungsi:",
-                function
+            x0 = float(
+                self.x0_entry.get()
             )
 
-        except ValueError as error:
+            tolerance = float(
+                self.tolerance_entry.get()
+            )
+
+            max_iterations = int(
+                self.max_iteration_entry.get()
+            )
+
+            root, iterations, derivative = (
+                self.calculate_newton_raphson(
+                    function,
+                    x0,
+                    tolerance,
+                    max_iterations
+                )
+            )
+
+            print(
+                "Akar:",
+                root
+            )
+
+            print(
+                "Turunan:",
+                derivative
+            )
+
+            print(
+                "Jumlah iterasi:",
+                len(iterations)
+            )
+
+        except Exception as error:
             print(
                 "Error:",
                 error
