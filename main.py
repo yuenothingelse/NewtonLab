@@ -11,6 +11,12 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 x = sp.symbols("x")
 
 
+BG = "#101522"
+PANEL = "#192235"
+TEXT = "#F1F5F9"
+ACCENT = "#8B7CFF"
+
+
 def parse_function(function_text):
     function_text = function_text.strip()
 
@@ -66,31 +72,120 @@ class NewtonRaphsonApp:
             "1200x800"
         )
 
+        self.root.minsize(
+            1000,
+            700
+        )
+
+        self.root.configure(
+            bg=BG
+        )
+
+        self.setup_style()
         self.build_ui()
+
+    def setup_style(self):
+        style = ttk.Style()
+
+        style.theme_use("clam")
+
+        style.configure(
+            "TFrame",
+            background=BG
+        )
+
+        style.configure(
+            "TLabel",
+            background=BG,
+            foreground=TEXT,
+            font=("Helvetica Neue", 10)
+        )
+
+        style.configure(
+            "Title.TLabel",
+            background=BG,
+            foreground=TEXT,
+            font=(
+                "Helvetica Neue",
+                24,
+                "bold"
+            )
+        )
+
+        style.configure(
+            "Subtitle.TLabel",
+            background=BG,
+            foreground="#AAB4C8",
+            font=(
+                "Helvetica Neue",
+                11
+            )
+        )
+
+        style.configure(
+            "TLabelframe",
+            background=BG,
+            foreground=TEXT
+        )
+
+        style.configure(
+            "TLabelframe.Label",
+            background=BG,
+            foreground=TEXT
+        )
+
+        style.configure(
+            "TEntry",
+            padding=8
+        )
+
+        style.configure(
+            "Accent.TButton",
+            background=ACCENT,
+            foreground="white",
+            padding=10,
+            font=(
+                "Helvetica Neue",
+                10,
+                "bold"
+            )
+        )
+
+        style.map(
+            "Accent.TButton",
+            background=[
+                ("active", "#7566E8")
+            ]
+        )
 
     def build_ui(self):
         title = ttk.Label(
             self.root,
             text="NewtonLab",
-            font=("Helvetica Neue", 24, "bold")
+            style="Title.TLabel"
         )
 
         title.pack(
-            pady=(25, 5)
+            pady=(25, 3)
         )
 
         subtitle = ttk.Label(
             self.root,
-            text="Kalkulator Metode Newton-Raphson"
+            text=(
+                "Kalkulator Penyelesaian "
+                "Persamaan Nonlinier"
+            ),
+            style="Subtitle.TLabel"
         )
 
         subtitle.pack()
 
         ttk.Label(
             self.root,
-            text="Praktikum Komputasi Numerik C"
+            text="Metode Newton-Raphson • "
+                 "Praktikum Komputasi Numerik C"
         ).pack(
-            pady=5
+            pady=(3, 15)
         )
 
         main_frame = ttk.Frame(
@@ -105,7 +200,7 @@ class NewtonRaphsonApp:
 
         input_frame = ttk.LabelFrame(
             main_frame,
-            text="Parameter Newton-Raphson",
+            text="  Parameter Perhitungan  ",
             padding=20
         )
 
@@ -117,17 +212,17 @@ class NewtonRaphsonApp:
 
         ttk.Label(
             input_frame,
-            text="Fungsi f(x):"
+            text="Fungsi f(x)"
         ).grid(
             row=0,
             column=0,
             sticky="w",
-            pady=5
+            pady=(0, 5)
         )
 
         self.function_entry = ttk.Entry(
             input_frame,
-            width=30
+            width=32
         )
 
         self.function_entry.grid(
@@ -143,17 +238,17 @@ class NewtonRaphsonApp:
 
         ttk.Label(
             input_frame,
-            text="Tebakan awal (x₀):"
+            text="Tebakan awal (x₀)"
         ).grid(
             row=2,
             column=0,
             sticky="w",
-            pady=5
+            pady=(0, 5)
         )
 
         self.x0_entry = ttk.Entry(
             input_frame,
-            width=30
+            width=32
         )
 
         self.x0_entry.grid(
@@ -169,17 +264,17 @@ class NewtonRaphsonApp:
 
         ttk.Label(
             input_frame,
-            text="Toleransi error:"
+            text="Toleransi error"
         ).grid(
             row=4,
             column=0,
             sticky="w",
-            pady=5
+            pady=(0, 5)
         )
 
         self.tolerance_entry = ttk.Entry(
             input_frame,
-            width=30
+            width=32
         )
 
         self.tolerance_entry.grid(
@@ -195,17 +290,17 @@ class NewtonRaphsonApp:
 
         ttk.Label(
             input_frame,
-            text="Maksimum iterasi:"
+            text="Maksimum iterasi"
         ).grid(
             row=6,
             column=0,
             sticky="w",
-            pady=5
+            pady=(0, 5)
         )
 
         self.max_iteration_entry = ttk.Entry(
             input_frame,
-            width=30
+            width=32
         )
 
         self.max_iteration_entry.grid(
@@ -222,6 +317,7 @@ class NewtonRaphsonApp:
         self.calculate_button = ttk.Button(
             input_frame,
             text="Hitung Akar",
+            style="Accent.TButton",
             command=self.calculate
         )
 
@@ -233,7 +329,7 @@ class NewtonRaphsonApp:
 
         result_frame = ttk.LabelFrame(
             main_frame,
-            text="Hasil, Iterasi, dan Grafik",
+            text="  Hasil Perhitungan  ",
             padding=15
         )
 
@@ -336,7 +432,6 @@ class NewtonRaphsonApp:
         )
 
         xn = x0
-
         iterations = []
 
         for n in range(
@@ -423,7 +518,7 @@ class NewtonRaphsonApp:
         self.ax.set_ylabel("f(x)")
 
         self.ax.set_title(
-            "Grafik Fungsi Newton-Raphson"
+            "Grafik Fungsi"
         )
 
         self.ax.grid(True)
