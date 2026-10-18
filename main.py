@@ -1,7 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
 
+import numpy as np
 import sympy as sp
+
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 x = sp.symbols("x")
@@ -59,7 +63,7 @@ class NewtonRaphsonApp:
         )
 
         self.root.geometry(
-            "1100x700"
+            "1200x800"
         )
 
         self.build_ui()
@@ -70,23 +74,30 @@ class NewtonRaphsonApp:
             text="NewtonLab",
             font=("Helvetica Neue", 24, "bold")
         )
-        title.pack(pady=(25, 5))
+
+        title.pack(
+            pady=(25, 5)
+        )
 
         subtitle = ttk.Label(
             self.root,
             text="Kalkulator Metode Newton-Raphson"
         )
+
         subtitle.pack()
 
         ttk.Label(
             self.root,
             text="Praktikum Komputasi Numerik C"
-        ).pack(pady=5)
+        ).pack(
+            pady=5
+        )
 
         main_frame = ttk.Frame(
             self.root,
             padding=25
         )
+
         main_frame.pack(
             fill="both",
             expand=True
@@ -222,7 +233,7 @@ class NewtonRaphsonApp:
 
         result_frame = ttk.LabelFrame(
             main_frame,
-            text="Hasil dan Iterasi",
+            text="Hasil, Iterasi, dan Grafik",
             padding=15
         )
 
@@ -238,7 +249,7 @@ class NewtonRaphsonApp:
         )
 
         self.result_label.pack(
-            pady=(0, 15)
+            pady=(0, 10)
         )
 
         columns = (
@@ -254,7 +265,7 @@ class NewtonRaphsonApp:
             result_frame,
             columns=columns,
             show="headings",
-            height=18
+            height=10
         )
 
         headers = {
@@ -274,11 +285,28 @@ class NewtonRaphsonApp:
 
             self.table.column(
                 column,
-                width=105,
+                width=95,
                 anchor="center"
             )
 
         self.table.pack(
+            fill="x",
+            pady=(0, 10)
+        )
+
+        self.figure = Figure(
+            figsize=(6, 4),
+            dpi=100
+        )
+
+        self.ax = self.figure.add_subplot(111)
+
+        self.canvas = FigureCanvasTkAgg(
+            self.figure,
+            master=result_frame
+        )
+
+        self.canvas.get_tk_widget().pack(
             fill="both",
             expand=True
         )
@@ -352,51 +380,73 @@ class NewtonRaphsonApp:
             derivative
         )
 
+    def plot_function(
+        self,
+        function,
+        root_value
+    ):
+        self.ax.clear()
+
+        f = sp.lambdify(
+            x,
+            function,
+            "numpy"
+        )
+
+        x_values = np.linspace(
+            root_value - 5,
+            root_value + 5,
+            500
+        )
+
+        y_values = f(x_values)
+
+        self.ax.plot(
+            x_values,
+            y_values,
+            label="f(x)"
+        )
+
+        self.ax.axhline(
+            0,
+            linewidth=0.8
+        )
+
+        self.ax.scatter(
+            [root_value],
+            [0],
+            s=60,
+            label="Akar"
+        )
+
+        self.ax.set_xlabel("x")
+        self.ax.set_ylabel("f(x)")
+
+        self.ax.set_title(
+            "Grafik Fungsi Newton-Raphson"
+        )
+
+        self.ax.grid(True)
+        self.ax.legend()
+
+        self.canvas.draw()
+
     def calculate(self):
         try:
             function = parse_function(
                 self.function_entry.get()
             )
 
-            x0_text = (
-                self.x0_entry
-                .get()
-                .strip()
+            x0 = float(
+                self.x0_entry.get()
             )
 
-            tolerance_text = (
-                self.tolerance_entry
-                .get()
-                .strip()
-            )
-
-            max_iteration_text = (
-                self.max_iteration_entry
-                .get()
-                .strip()
-            )
-
-            if not x0_text:
-                raise ValueError(
-                    "Tebakan awal harus diisi."
-                )
-
-            if not tolerance_text:
-                raise ValueError(
-                    "Toleransi harus diisi."
-                )
-
-            if not max_iteration_text:
-                raise ValueError(
-                    "Maksimum iterasi harus diisi."
-                )
-
-            x0 = float(x0_text)
             tolerance = float(
-                tolerance_text
+                self.tolerance_entry.get()
             )
+
             max_iterations = int(
-                max_iteration_text
+                self.max_iteration_entry.get()
             )
 
             if tolerance <= 0:
@@ -439,10 +489,9 @@ class NewtonRaphsonApp:
                 text=f"Akar = {root:.10f}"
             )
 
-        except ValueError as error:
-            print(
-                "Input Error:",
-                error
+            self.plot_function(
+                function,
+                root
             )
 
         except Exception as error:
