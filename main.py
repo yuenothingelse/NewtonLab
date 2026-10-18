@@ -294,17 +294,56 @@ class NewtonRaphsonApp:
                 self.function_entry.get()
             )
 
-            x0 = float(
-                self.x0_entry.get()
+            x0_text = (
+                self.x0_entry
+                .get()
+                .strip()
             )
 
+            tolerance_text = (
+                self.tolerance_entry
+                .get()
+                .strip()
+            )
+
+            max_iteration_text = (
+                self.max_iteration_entry
+                .get()
+                .strip()
+            )
+
+            if not x0_text:
+                raise ValueError(
+                    "Tebakan awal harus diisi."
+                )
+
+            if not tolerance_text:
+                raise ValueError(
+                    "Toleransi harus diisi."
+                )
+
+            if not max_iteration_text:
+                raise ValueError(
+                    "Maksimum iterasi harus diisi."
+                )
+
+            x0 = float(x0_text)
             tolerance = float(
-                self.tolerance_entry.get()
+                tolerance_text
+            )
+            max_iterations = int(
+                max_iteration_text
             )
 
-            max_iterations = int(
-                self.max_iteration_entry.get()
-            )
+            if tolerance <= 0:
+                raise ValueError(
+                    "Toleransi harus lebih besar dari 0."
+                )
+
+            if max_iterations < 1:
+                raise ValueError(
+                    "Maksimum iterasi minimal 1."
+                )
 
             root, iterations, derivative = (
                 self.calculate_newton_raphson(
@@ -321,13 +360,14 @@ class NewtonRaphsonApp:
             )
 
             print(
-                "Turunan:",
-                derivative
-            )
-
-            print(
                 "Jumlah iterasi:",
                 len(iterations)
+            )
+
+        except ValueError as error:
+            print(
+                "Input Error:",
+                error
             )
 
         except Exception as error:
