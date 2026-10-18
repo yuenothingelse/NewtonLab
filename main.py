@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 import numpy as np
 import sympy as sp
@@ -182,8 +182,10 @@ class NewtonRaphsonApp:
 
         ttk.Label(
             self.root,
-            text="Metode Newton-Raphson • "
-                 "Praktikum Komputasi Numerik C"
+            text=(
+                "Metode Newton-Raphson • "
+                "Praktikum Komputasi Numerik C"
+            )
         ).pack(
             pady=(3, 15)
         )
@@ -325,6 +327,19 @@ class NewtonRaphsonApp:
             row=8,
             column=0,
             sticky="ew"
+        )
+
+        self.reset_button = ttk.Button(
+            input_frame,
+            text="Reset",
+            command=self.reset
+        )
+
+        self.reset_button.grid(
+            row=9,
+            column=0,
+            sticky="ew",
+            pady=(10, 0)
         )
 
         result_frame = ttk.LabelFrame(
@@ -589,11 +604,71 @@ class NewtonRaphsonApp:
                 root
             )
 
-        except Exception as error:
-            print(
-                "Error:",
-                error
+        except ValueError as error:
+            messagebox.showerror(
+                "Input Tidak Valid",
+                str(error)
             )
+
+        except Exception as error:
+            messagebox.showerror(
+                "Error",
+                str(error)
+            )
+
+    def reset(self):
+        self.function_entry.delete(
+            0,
+            tk.END
+        )
+
+        self.function_entry.insert(
+            0,
+            "x^2 - 4"
+        )
+
+        self.x0_entry.delete(
+            0,
+            tk.END
+        )
+
+        self.x0_entry.insert(
+            0,
+            "3"
+        )
+
+        self.tolerance_entry.delete(
+            0,
+            tk.END
+        )
+
+        self.tolerance_entry.insert(
+            0,
+            "0.000001"
+        )
+
+        self.max_iteration_entry.delete(
+            0,
+            tk.END
+        )
+
+        self.max_iteration_entry.insert(
+            0,
+            "50"
+        )
+
+        self.result_label.config(
+            text="Belum ada hasil."
+        )
+
+        for item in self.table.get_children():
+            self.table.delete(item)
+
+        self.ax.clear()
+
+        self.ax.grid(True)
+
+        self.canvas.draw()
 
 
 def main():
