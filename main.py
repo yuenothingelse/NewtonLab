@@ -54,8 +54,13 @@ class NewtonRaphsonApp:
     def __init__(self, root):
         self.root = root
 
-        self.root.title("NewtonLab | Newton-Raphson")
-        self.root.geometry("1000x650")
+        self.root.title(
+            "NewtonLab | Newton-Raphson"
+        )
+
+        self.root.geometry(
+            "1100x700"
+        )
 
         self.build_ui()
 
@@ -80,7 +85,7 @@ class NewtonRaphsonApp:
 
         main_frame = ttk.Frame(
             self.root,
-            padding=30
+            padding=25
         )
         main_frame.pack(
             fill="both",
@@ -92,6 +97,7 @@ class NewtonRaphsonApp:
             text="Parameter Newton-Raphson",
             padding=20
         )
+
         input_frame.pack(
             side="left",
             fill="y",
@@ -112,11 +118,13 @@ class NewtonRaphsonApp:
             input_frame,
             width=30
         )
+
         self.function_entry.grid(
             row=1,
             column=0,
             pady=(0, 15)
         )
+
         self.function_entry.insert(
             0,
             "x^2 - 4"
@@ -136,12 +144,17 @@ class NewtonRaphsonApp:
             input_frame,
             width=30
         )
+
         self.x0_entry.grid(
             row=3,
             column=0,
             pady=(0, 15)
         )
-        self.x0_entry.insert(0, "3")
+
+        self.x0_entry.insert(
+            0,
+            "3"
+        )
 
         ttk.Label(
             input_frame,
@@ -157,11 +170,13 @@ class NewtonRaphsonApp:
             input_frame,
             width=30
         )
+
         self.tolerance_entry.grid(
             row=5,
             column=0,
             pady=(0, 15)
         )
+
         self.tolerance_entry.insert(
             0,
             "0.000001"
@@ -181,11 +196,13 @@ class NewtonRaphsonApp:
             input_frame,
             width=30
         )
+
         self.max_iteration_entry.grid(
             row=7,
             column=0,
             pady=(0, 20)
         )
+
         self.max_iteration_entry.insert(
             0,
             "50"
@@ -196,6 +213,7 @@ class NewtonRaphsonApp:
             text="Hitung Akar",
             command=self.calculate
         )
+
         self.calculate_button.grid(
             row=8,
             column=0,
@@ -204,20 +222,65 @@ class NewtonRaphsonApp:
 
         result_frame = ttk.LabelFrame(
             main_frame,
-            text="Hasil",
-            padding=20
+            text="Hasil dan Iterasi",
+            padding=15
         )
+
         result_frame.pack(
             side="right",
             fill="both",
             expand=True
         )
 
-        ttk.Label(
+        self.result_label = ttk.Label(
             result_frame,
-            text="Hasil perhitungan akan ditampilkan di sini."
-        ).pack(
-            pady=30
+            text="Belum ada hasil."
+        )
+
+        self.result_label.pack(
+            pady=(0, 15)
+        )
+
+        columns = (
+            "iteration",
+            "xn",
+            "fx",
+            "dfx",
+            "x_next",
+            "error"
+        )
+
+        self.table = ttk.Treeview(
+            result_frame,
+            columns=columns,
+            show="headings",
+            height=18
+        )
+
+        headers = {
+            "iteration": "n",
+            "xn": "xₙ",
+            "fx": "f(xₙ)",
+            "dfx": "f'(xₙ)",
+            "x_next": "xₙ₊₁",
+            "error": "Error"
+        }
+
+        for column in columns:
+            self.table.heading(
+                column,
+                text=headers[column]
+            )
+
+            self.table.column(
+                column,
+                width=105,
+                anchor="center"
+            )
+
+        self.table.pack(
+            fill="both",
+            expand=True
         )
 
     def calculate_newton_raphson(
@@ -245,6 +308,7 @@ class NewtonRaphsonApp:
         )
 
         xn = x0
+
         iterations = []
 
         for n in range(
@@ -354,14 +418,25 @@ class NewtonRaphsonApp:
                 )
             )
 
-            print(
-                "Akar:",
-                root
-            )
+            for item in self.table.get_children():
+                self.table.delete(item)
 
-            print(
-                "Jumlah iterasi:",
-                len(iterations)
+            for row in iterations:
+                self.table.insert(
+                    "",
+                    "end",
+                    values=(
+                        row["iteration"],
+                        f'{row["xn"]:.8f}',
+                        f'{row["fx"]:.8f}',
+                        f'{row["dfx"]:.8f}',
+                        f'{row["x_next"]:.8f}',
+                        f'{row["error"]:.8f}'
+                    )
+                )
+
+            self.result_label.config(
+                text=f"Akar = {root:.10f}"
             )
 
         except ValueError as error:
