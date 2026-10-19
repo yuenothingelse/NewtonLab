@@ -122,3 +122,84 @@ Tekan `Ctrl+Shift+P`, pilih Python: Select Interpreter, lalu pilih `.venv`.
 Buka `main.py`, lalu klik tombol ▶ Run Python File.
 </details>
 ---
+## 🕹️ Cara Menggunakan
+
+1. **Masukkan fungsi f(x)** pada kolom *Fungsi f(x)*.
+2. Isi **tebakan awal (x₀)**.
+3. Tentukan **toleransi error** dan **maksimum iterasi**.
+4. Klik tombol **Hitung akar**.
+5. Lihat kartu ringkasan, grafik, dan riwayat iterasi pada panel hasil.
+6. Klik **Reset** untuk mengembalikan tampilan seperti semula.
+
+<details>
+<summary><b>📝 Aturan penulisan fungsi (klik untuk membuka)</b></summary>
+
+| Yang didukung | Contoh |
+|---|---|
+| Operator | `+`  `-`  `*`  `/`  `^` (pangkat)  `( )` |
+| Fungsi | `sin(x)`  `cos(x)`  `tan(x)`  `asin(x)`  `acos(x)`  `atan(x)`  `exp(x)`  `log(x)`  `sqrt(x)`  `abs(x)` |
+| Konstanta | `pi`  `E` |
+
+Contoh penulisan yang valid:
+
+```
+x^3 - x - 2
+cos(x) - x
+exp(x) - 3*x
+sqrt(x) - 2
+```
+
+</details>
+
+---
+
+## 🧪 Contoh Kasus
+
+**Soal:** cari akar dari f(x) = x² − 4
+
+| Parameter | Nilai |
+|---|---|
+| f(x) | `x^2 - 4` |
+| Tebakan awal (x₀) | `3` |
+| Toleransi error | `0.000001` |
+| Maksimum iterasi | `50` |
+
+**Hasil:** akar **x ≈ 2** ditemukan dalam **5 iterasi** dengan error akhir **2,62 × 10⁻¹¹**, jauh di bawah toleransi 10⁻⁶.
+
+<div align="center">
+
+<img src="assets/hasil-perhitungan.png" alt="Hasil perhitungan NewtonLab" width="850">
+
+</div>
+
+### 📋 Riwayat Iterasi
+
+| n | xₙ | f(xₙ) | f′(xₙ) | xₙ₊₁ | Error |
+|:-:|:-:|:-:|:-:|:-:|:-:|
+| 1 | 3 | 5 | 6 | 2,1666667 | 0,83333333 |
+| 2 | 2,1666667 | 0,69444444 | 4,3333333 | 2,0064103 | 0,16025641 |
+| 3 | 2,0064103 | 0,025682117 | 4,0128205 | 2,0000102 | 0,0064000164 |
+| 4 | 2,0000102 | 4,096021e-05 | 4,0000205 | 2 | 1,024e-05 |
+| 5 | 2 | 1,0485657e-10 | 4 | 2 | 2,6214142e-11 |
+
+Terlihat error mengecil sangat cepat di setiap iterasi, ciri khas konvergensi kuadratik pada metode Newton-Raphson.
+
+<details>
+<summary><b>🔍 Hitungan manual iterasi pertama (klik untuk membuka)</b></summary>
+
+Dengan f(x) = x² − 4, maka f′(x) = 2x dan x₀ = 3:
+
+```
+f(3)  = 3² − 4 = 5
+f′(3) = 2·3    = 6
+
+x₁ = 3 − 5/6 ≈ 2,1666667
+error = |2,1666667 − 3| ≈ 0,8333333
+```
+
+Hasil ini sama dengan baris pertama pada tabel di atas.
+
+</details>
+
+---
+
