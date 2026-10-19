@@ -48,3 +48,77 @@
 | 🌙 **Tampilan dark mode** | Antarmuka modern dengan aksen ungu |
 
 ---
+
+🎯 Tentang Metode Newton-Raphson
+Metode Newton-Raphson mencari akar f(x) = 0 dengan memakai garis singgung kurva sebagai pendekatan. Mulai dari tebakan awal x₀, setiap iterasi memperbaiki tebakan dengan rumus:
+```
+xₙ₊₁ = xₙ − f(xₙ) / f′(xₙ)
+```
+Error dihitung sebagai selisih mutlak dua tebakan berurutan:
+```
+error = |xₙ₊₁ − xₙ|
+```
+```mermaid
+flowchart TD
+    A(\[Mulai]) --> B\[/Input f x, x0, toleransi, maks iterasi/]
+    B --> C\[Hitung f' x secara simbolik]
+    C --> D\[Hitung f xn dan f' xn]
+    D --> E{abs f' xn < 1e-14 ?}
+    E -- Ya --> F\[/Error: turunan mendekati nol/]
+    E -- Tidak --> G\["xn+1 = xn - f xn / f' xn"]
+    G --> H\["error = abs xn+1 - xn"]
+    H --> I{error <= toleransi ?}
+    I -- Ya --> J\[Akar ditemukan]
+    I -- Tidak --> K{iterasi = maksimum ?}
+    K -- Ya --> J
+    K -- Tidak --> D
+    J --> L\[/Tampilkan akar, tabel iterasi, grafik/]
+    L --> M(\[Selesai])
+```
+<details>
+<summary><b>💡 Kelebihan dan keterbatasan (klik untuk membuka)</b></summary>
+Kelebihan
+Konvergensi sangat cepat (kuadratik) bila tebakan awal dekat dengan akar.
+Hanya butuh satu tebakan awal, bukan interval.
+Keterbatasan
+Gagal jika f′(xₙ) = 0 atau mendekati nol.
+Bisa divergen atau menuju akar yang tidak diinginkan jika x₀ kurang tepat.
+Membutuhkan fungsi yang dapat diturunkan.
+</details>
+---
+🚀 Cara Menjalankan
+1. Clone repository
+```bash
+git clone https://github.com/<username>/<nama-repository>.git
+cd <nama-repository>
+```
+2. Buat dan aktifkan virtual environment
+```bash
+python -m venv .venv
+```
+Aktifkan sesuai sistem operasi:
+```bash
+.venv\\Scripts\\activate           # Windows
+source .venv/bin/activate        # macOS / Linux
+```
+> 💡 \*\*Windows PowerShell\*\* kadang menolak aktivasi dengan error \*"running scripts is disabled on this system"\*. Jalankan sekali perintah berikut, lalu ulangi aktivasi:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+> ```
+> Alternatifnya, gunakan \*\*Command Prompt\*\* (CMD).
+3. Instal library
+```bash
+pip install -r requirements.txt
+```
+> `tkinter` sudah termasuk dalam instalasi Python standar. Pengguna Linux dapat memasangnya dengan `sudo apt install python3-tk`.
+4. Jalankan program
+```bash
+python main.py
+```
+<details>
+<summary><b>🧰 Menjalankan lewat VS Code (klik untuk membuka)</b></summary>
+Buka folder project dengan File → Open Folder.
+Tekan `Ctrl+Shift+P`, pilih Python: Select Interpreter, lalu pilih `.venv`.
+Buka `main.py`, lalu klik tombol ▶ Run Python File.
+</details>
+---
