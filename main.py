@@ -1,681 +1,358 @@
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 import numpy as np
 import sympy as sp
-
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-
-x = sp.symbols("x")
+from matplotlib.figure import Figure
 
 
 BG = "#101522"
 PANEL = "#192235"
-TEXT = "#F1F5F9"
-ACCENT = "#8B7CFF"
+PANEL_2 = "#202c43"
+TEXT = "#f1f5f9"
+MUTED = "#a8b4c8"
+ACCENT = "#8b7cff"
+GREEN = "#45d6a1"
+RED = "#91303d"
+
+x = sp.symbols("x")
+ALLOWED_FUNCTIONS = {
+    "sin": sp.sin,
+    "cos": sp.cos,
+    "tan": sp.tan,
+    "asin": sp.asin,
+    "acos": sp.acos,
+    "atan": sp.atan,
+    "exp": sp.exp,
+    "log": sp.log,
+    "sqrt": sp.sqrt,
+    "abs": sp.Abs,
+}
+ALLOWED_NAMES = {"x", "pi", "E", *ALLOWED_FUNCTIONS.keys()}
 
 
-def parse_function(function_text):
-    function_text = function_text.strip()
+def parse_function(raw_text):
+    """Memvalidasi dan mengubah input fungsi menjadi ekspresi SymPy."""
+    expression = raw_text.strip().replace("^", "**")
+    if not expression:
+        raise ValueError("Fungsi f(x) belum diisi.")
 
-    if not function_text:
+    if not re.fullmatch(r"[A-Za-z0-9_+\-*/().,\s]*", expression):
+        raise ValueError("Gunakan hanya angka, x, operator matematika, kurung, dan fungsi yang didukung.")
+
+    identifiers = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expression)
+    unknown_names = sorted(set(identifiers) - ALLOWED_NAMES)
+    if unknown_names:
         raise ValueError(
-            "Fungsi f(x) tidak boleh kosong."
+            "Nama tidak dikenal: " + ", ".join(unknown_names) +
+            ". Gunakan x, sin, cos, tan, exp, log, sqrt, abs, pi, atau E."
         )
 
-    function_text = function_text.replace(
-        "^",
-        "**"
-    )
-
-    allowed_functions = {
-        "sin": sp.sin,
-        "cos": sp.cos,
-        "tan": sp.tan,
-        "exp": sp.exp,
-        "log": sp.log,
-        "sqrt": sp.sqrt,
-        "abs": sp.Abs
-    }
-
-    local_dict = {
-        "x": x,
-        "pi": sp.pi,
-        "E": sp.E,
-        **allowed_functions
-    }
-
+    local_names = {"x": x, "pi": sp.pi, "E": sp.E, **ALLOWED_FUNCTIONS}
     try:
-        expression = sp.sympify(
-            function_text,
-            locals=local_dict
-        )
-    except Exception as error:
-        raise ValueError(
-            "Format fungsi tidak valid."
-        ) from error
+        result = sp.sympify(expression, locals=local_names, evaluate=True)
+    except (sp.SympifyError, SyntaxError, TypeError, ValueError) as exc:
+        raise ValueError("Format fungsi tidak valid. Contoh yang benar: x^2 - 4 atau cos(x) - x.") from exc
 
-    return expression
+    if result.free_symbols - {x}:
+        raise ValueError("Fungsi hanya boleh menggunakan variabel x.")
+    if result.is_real is False:
+        raise ValueError("Fungsi harus berupa ekspresi real untuk penggunaan ini.")
+    return result
+
+
+def as_real_number(value, description):
+    """Konversi nilai numerik menjadi float dan menolak NaN/inf."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{description} bukan angka yang valid.") from exc
+    if not np.isfinite(number):
+        raise ValueError(f"{description} harus berupa angka hingga (bukan NaN atau tak hingga).")
+    return number
 
 
 class NewtonRaphsonApp:
     def __init__(self, root):
         self.root = root
+        self.root.title("NewtonLab | Kalkulator Newton-Raphson")
+        self.root.geometry("1220x800")
+        self.root.minsize(980, 680)
+        self.root.configure(bg=BG)
 
-        self.root.title(
-            "NewtonLab | Newton-Raphson"
-        )
+        self._configure_styles()
+        self._build_ui()
+        self._draw_empty_graph()
 
-        self.root.geometry(
-            "1200x800"
-        )
-
-        self.root.minsize(
-            1000,
-            700
-        )
-
-        self.root.configure(
-            bg=BG
-        )
-
-        self.setup_style()
-        self.build_ui()
-
-    def setup_style(self):
+    def _configure_styles(self):
         style = ttk.Style()
-
         style.theme_use("clam")
+        style.configure("TFrame", background=BG)
+        style.configure("Panel.TFrame", background=PANEL)
+        style.configure("TLabel", background=BG, foreground=TEXT, font=("Helvetica Neue", 10))
+        style.configure("Muted.TLabel", background=BG, foreground=MUTED, font=("Helvetica Neue", 9))
+        style.configure("Panel.TLabel", background=PANEL, foreground=TEXT, font=("Helvetica Neue", 10))
+        style.configure("PanelMuted.TLabel", background=PANEL, foreground=MUTED, font=("Helvetica Neue", 9))
+        style.configure("Heading.TLabel", background=BG, foreground=TEXT, font=("Helvetica Neue", 22, "bold"))
+        style.configure("Subheading.TLabel", background=BG, foreground=MUTED, font=("Helvetica Neue", 10))
+        style.configure("TEntry", fieldbackground="#0f1726", foreground=TEXT, insertcolor=TEXT,
+                        bordercolor=PANEL_2, padding=9)
+        style.configure("Accent.TButton", background=ACCENT, foreground="#ffffff",
+                        font=("Helvetica Neue", 10, "bold"), padding=(14, 10), borderwidth=0)
+        style.map("Accent.TButton", background=[("active", "#7667ec")])
+        style.configure("Secondary.TButton", background=PANEL_2, foreground=TEXT,
+                        font=("Helvetica Neue", 10), padding=(12, 10), borderwidth=0)
+        style.map("Secondary.TButton", background=[("active", "#2b3a55")])
+        style.configure("Treeview", background="#111a2a", fieldbackground="#111a2a",
+                        foreground=TEXT, rowheight=29, borderwidth=0, font=("Helvetica Neue", 9))
+        style.configure("Treeview.Heading", background=PANEL_2, foreground=TEXT,
+                        font=("Helvetica Neue", 9, "bold"), padding=8, borderwidth=0)
+        style.map("Treeview", background=[("selected", "#443c83")])
 
-        style.configure(
-            "TFrame",
-            background=BG
-        )
+    def _build_ui(self):
+        header = ttk.Frame(self.root, padding=(24, 20, 24, 12))
+        header.pack(fill="x")
+        title_area = ttk.Frame(header)
+        title_area.pack(side="left", fill="x", expand=True)
+        ttk.Label(title_area, text="NewtonLab", style="Heading.TLabel").pack(anchor="w")
+        ttk.Label(title_area, text="Kalkulator metode Newton-Raphson · Komputasi Numerik",
+                  style="Subheading.TLabel").pack(anchor="w", pady=(4, 0))
+        ttk.Label(header, text="PYTHON  •  DESKTOP GUI", style="Subheading.TLabel").pack(side="right", anchor="center")
 
-        style.configure(
-            "TLabel",
-            background=BG,
-            foreground=TEXT,
-            font=("Helvetica Neue", 10)
-        )
+        body = ttk.Frame(self.root, padding=(24, 4, 24, 20))
+        body.pack(fill="both", expand=True)
+        body.columnconfigure(0, weight=0, minsize=285)
+        body.columnconfigure(1, weight=1)
+        body.rowconfigure(0, weight=1)
 
-        style.configure(
-            "Title.TLabel",
-            background=BG,
-            foreground=TEXT,
-            font=(
-                "Helvetica Neue",
-                24,
-                "bold"
-            )
-        )
+        self._build_input_panel(body)
+        self._build_results_panel(body)
 
-        style.configure(
-            "Subtitle.TLabel",
-            background=BG,
-            foreground="#AAB4C8",
-            font=(
-                "Helvetica Neue",
-                11
-            )
-        )
+        footer = ttk.Frame(self.root, padding=(24, 0, 24, 12))
+        footer.pack(fill="x")
+        ttk.Label(footer, text="Catatan: hasil numerik bergantung pada tebakan awal dan sifat fungsi.",
+                  style="Muted.TLabel").pack(anchor="w")
 
-        style.configure(
-            "TLabelframe",
-            background=BG,
-            foreground=TEXT
-        )
+    def _build_input_panel(self, parent):
+        panel = ttk.Frame(parent, style="Panel.TFrame", padding=18)
+        panel.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
+        panel.columnconfigure(0, weight=1)
 
-        style.configure(
-            "TLabelframe.Label",
-            background=BG,
-            foreground=TEXT
-        )
+        ttk.Label(panel, text="PARAMETER INPUT", style="PanelMuted.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 14))
+        ttk.Label(panel, text="Fungsi f(x)", style="Panel.TLabel").grid(row=1, column=0, sticky="w")
+        self.function_var = tk.StringVar(value="x^2 - 4")
+        ttk.Entry(panel, textvariable=self.function_var).grid(row=2, column=0, sticky="ew", pady=(6, 4))
+        ttk.Label(panel, text="Contoh: x^3 - x - 2, cos(x) - x", style="PanelMuted.TLabel").grid(row=3, column=0, sticky="w", pady=(0, 14))
 
-        style.configure(
-            "TEntry",
-            padding=8
-        )
+        ttk.Label(panel, text="Tebakan awal (x₀)", style="Panel.TLabel").grid(row=4, column=0, sticky="w")
+        self.x0_var = tk.StringVar(value="3")
+        ttk.Entry(panel, textvariable=self.x0_var).grid(row=5, column=0, sticky="ew", pady=(6, 14))
 
-        style.configure(
-            "Accent.TButton",
-            background=ACCENT,
-            foreground="white",
-            padding=10,
-            font=(
-                "Helvetica Neue",
-                10,
-                "bold"
-            )
-        )
+        ttk.Label(panel, text="Toleransi error", style="Panel.TLabel").grid(row=6, column=0, sticky="w")
+        self.tol_var = tk.StringVar(value="0.000001")
+        ttk.Entry(panel, textvariable=self.tol_var).grid(row=7, column=0, sticky="ew", pady=(6, 14))
 
-        style.map(
-            "Accent.TButton",
-            background=[
-                ("active", "#7566E8")
-            ]
-        )
+        ttk.Label(panel, text="Maksimum iterasi", style="Panel.TLabel").grid(row=8, column=0, sticky="w")
+        self.max_iter_var = tk.StringVar(value="50")
+        ttk.Entry(panel, textvariable=self.max_iter_var).grid(row=9, column=0, sticky="ew", pady=(6, 18))
 
-    def build_ui(self):
-        title = ttk.Label(
-            self.root,
-            text="NewtonLab",
-            style="Title.TLabel"
-        )
+        ttk.Button(panel, text="Hitung akar  →", style="Accent.TButton", command=self.calculate).grid(row=10, column=0, sticky="ew", pady=(0, 8))
+        ttk.Button(panel, text="Reset", style="Secondary.TButton", command=self.reset).grid(row=11, column=0, sticky="ew")
 
-        title.pack(
-            pady=(25, 3)
-        )
+        ttk.Separator(panel).grid(row=12, column=0, sticky="ew", pady=18)
+        ttk.Label(panel, text="FUNGSI YANG DIDUKUNG", style="PanelMuted.TLabel").grid(row=13, column=0, sticky="w", pady=(0, 6))
+        ttk.Label(panel, text="x, +, -, *, /, ^, ( )\nsin(x), cos(x), tan(x)\nexp(x), log(x), sqrt(x), abs(x)\npi, E",
+                  style="Panel.TLabel", justify="left").grid(row=14, column=0, sticky="w")
 
-        subtitle = ttk.Label(
-            self.root,
-            text=(
-                "Kalkulator Penyelesaian "
-                "Persamaan Nonlinier"
-            ),
-            style="Subtitle.TLabel"
-        )
+    def _build_results_panel(self, parent):
+        panel = ttk.Frame(parent)
+        panel.grid(row=0, column=1, sticky="nsew")
+        panel.columnconfigure(0, weight=1)
+        panel.rowconfigure(1, weight=3)
+        panel.rowconfigure(2, weight=2)
 
-        subtitle.pack()
+        cards = ttk.Frame(panel)
+        cards.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        for col in range(3):
+            cards.columnconfigure(col, weight=1)
+        self.root_value = self._metric_card(cards, 0, "PERKIRAAN AKAR", "—")
+        self.error_value = self._metric_card(cards, 1, "ERROR AKHIR", "—")
+        self.iter_value = self._metric_card(cards, 2, "JUMLAH ITERASI", "—")
 
-        ttk.Label(
-            self.root,
-            text=(
-                "Metode Newton-Raphson • "
-                "Praktikum Komputasi Numerik C"
-            )
-        ).pack(
-            pady=(3, 15)
-        )
-
-        main_frame = ttk.Frame(
-            self.root,
-            padding=25
-        )
-
-        main_frame.pack(
-            fill="both",
-            expand=True
-        )
-
-        input_frame = ttk.LabelFrame(
-            main_frame,
-            text="  Parameter Perhitungan  ",
-            padding=20
-        )
-
-        input_frame.pack(
-            side="left",
-            fill="y",
-            padx=(0, 15)
-        )
-
-        ttk.Label(
-            input_frame,
-            text="Fungsi f(x)"
-        ).grid(
-            row=0,
-            column=0,
-            sticky="w",
-            pady=(0, 5)
-        )
-
-        self.function_entry = ttk.Entry(
-            input_frame,
-            width=32
-        )
-
-        self.function_entry.grid(
-            row=1,
-            column=0,
-            pady=(0, 15)
-        )
-
-        self.function_entry.insert(
-            0,
-            "x^2 - 4"
-        )
-
-        ttk.Label(
-            input_frame,
-            text="Tebakan awal (x₀)"
-        ).grid(
-            row=2,
-            column=0,
-            sticky="w",
-            pady=(0, 5)
-        )
-
-        self.x0_entry = ttk.Entry(
-            input_frame,
-            width=32
-        )
-
-        self.x0_entry.grid(
-            row=3,
-            column=0,
-            pady=(0, 15)
-        )
-
-        self.x0_entry.insert(
-            0,
-            "3"
-        )
-
-        ttk.Label(
-            input_frame,
-            text="Toleransi error"
-        ).grid(
-            row=4,
-            column=0,
-            sticky="w",
-            pady=(0, 5)
-        )
-
-        self.tolerance_entry = ttk.Entry(
-            input_frame,
-            width=32
-        )
-
-        self.tolerance_entry.grid(
-            row=5,
-            column=0,
-            pady=(0, 15)
-        )
-
-        self.tolerance_entry.insert(
-            0,
-            "0.000001"
-        )
-
-        ttk.Label(
-            input_frame,
-            text="Maksimum iterasi"
-        ).grid(
-            row=6,
-            column=0,
-            sticky="w",
-            pady=(0, 5)
-        )
-
-        self.max_iteration_entry = ttk.Entry(
-            input_frame,
-            width=32
-        )
-
-        self.max_iteration_entry.grid(
-            row=7,
-            column=0,
-            pady=(0, 20)
-        )
-
-        self.max_iteration_entry.insert(
-            0,
-            "50"
-        )
-
-        self.calculate_button = ttk.Button(
-            input_frame,
-            text="Hitung Akar",
-            style="Accent.TButton",
-            command=self.calculate
-        )
-
-        self.calculate_button.grid(
-            row=8,
-            column=0,
-            sticky="ew"
-        )
-
-        self.reset_button = ttk.Button(
-            input_frame,
-            text="Reset",
-            command=self.reset
-        )
-
-        self.reset_button.grid(
-            row=9,
-            column=0,
-            sticky="ew",
-            pady=(10, 0)
-        )
-
-        result_frame = ttk.LabelFrame(
-            main_frame,
-            text="  Hasil Perhitungan  ",
-            padding=15
-        )
-
-        result_frame.pack(
-            side="right",
-            fill="both",
-            expand=True
-        )
-
-        self.result_label = ttk.Label(
-            result_frame,
-            text="Belum ada hasil."
-        )
-
-        self.result_label.pack(
-            pady=(0, 10)
-        )
-
-        columns = (
-            "iteration",
-            "xn",
-            "fx",
-            "dfx",
-            "x_next",
-            "error"
-        )
-
-        self.table = ttk.Treeview(
-            result_frame,
-            columns=columns,
-            show="headings",
-            height=10
-        )
-
-        headers = {
-            "iteration": "n",
-            "xn": "xₙ",
-            "fx": "f(xₙ)",
-            "dfx": "f'(xₙ)",
-            "x_next": "xₙ₊₁",
-            "error": "Error"
-        }
-
-        for column in columns:
-            self.table.heading(
-                column,
-                text=headers[column]
-            )
-
-            self.table.column(
-                column,
-                width=95,
-                anchor="center"
-            )
-
-        self.table.pack(
-            fill="x",
-            pady=(0, 10)
-        )
-
-        self.figure = Figure(
-            figsize=(6, 4),
-            dpi=100
-        )
-
+        graph_frame = ttk.Frame(panel, style="Panel.TFrame", padding=10)
+        graph_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 12))
+        graph_frame.rowconfigure(0, weight=1)
+        graph_frame.columnconfigure(0, weight=1)
+        self.figure = Figure(figsize=(7, 3.2), dpi=100, facecolor=PANEL)
         self.ax = self.figure.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=graph_frame)
+        self.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
 
-        self.canvas = FigureCanvasTkAgg(
-            self.figure,
-            master=result_frame
-        )
+        table_frame = ttk.Frame(panel, style="Panel.TFrame", padding=10)
+        table_frame.grid(row=2, column=0, sticky="nsew")
+        table_frame.rowconfigure(1, weight=1)
+        table_frame.columnconfigure(0, weight=1)
+        ttk.Label(table_frame, text="RIWAYAT ITERASI", style="Panel.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
+        columns = ("n", "xn", "fxn", "dfxn", "next", "error")
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=7)
+        headings = {"n": "n", "xn": "xₙ", "fxn": "f(xₙ)", "dfxn": "f′(xₙ)", "next": "xₙ₊₁", "error": "Error"}
+        widths = {"n": 42, "xn": 115, "fxn": 115, "dfxn": 115, "next": 115, "error": 115}
+        for col in columns:
+            self.tree.heading(col, text=headings[col])
+            self.tree.column(col, width=widths[col], minwidth=40, anchor="center", stretch=True)
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.tree.grid(row=1, column=0, sticky="nsew")
+        scrollbar.grid(row=1, column=1, sticky="ns")
+        self.status_var = tk.StringVar(value="Masukkan parameter lalu klik Hitung akar.")
+        ttk.Label(table_frame, textvariable=self.status_var, style="PanelMuted.TLabel", wraplength=800).grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
-        self.canvas.get_tk_widget().pack(
-            fill="both",
-            expand=True
-        )
+    def _metric_card(self, parent, column, label, value):
+        card = ttk.Frame(parent, style="Panel.TFrame", padding=(13, 12))
+        card.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 6, 0 if column == 2 else 6))
+        ttk.Label(card, text=label, style="PanelMuted.TLabel").pack(anchor="w")
+        value_label = ttk.Label(card, text=value, style="Panel.TLabel", font=("Helvetica Neue", 15, "bold"))
+        value_label.pack(anchor="w", pady=(7, 0))
+        return value_label
 
-    def calculate_newton_raphson(
-        self,
-        function,
-        x0,
-        tolerance,
-        max_iterations
-    ):
-        derivative = sp.diff(
-            function,
-            x
-        )
+    def _style_axes(self):
+        self.ax.set_facecolor("#111a2a")
+        self.ax.tick_params(colors=MUTED, labelsize=8)
+        self.ax.xaxis.label.set_color(MUTED)
+        self.ax.yaxis.label.set_color(MUTED)
+        self.ax.title.set_color(TEXT)
+        for spine in self.ax.spines.values():
+            spine.set_color("#39465d")
+        self.ax.grid(True, color="#2a354b", linewidth=0.7, alpha=0.8)
+        self.ax.axhline(0, color="#8290a8", linewidth=0.8)
+        self.ax.axvline(0, color="#8290a8", linewidth=0.8)
 
-        f = sp.lambdify(
-            x,
-            function,
-            "numpy"
-        )
-
-        df = sp.lambdify(
-            x,
-            derivative,
-            "numpy"
-        )
-
-        xn = x0
-        iterations = []
-
-        for n in range(
-            1,
-            max_iterations + 1
-        ):
-            fx = float(f(xn))
-            dfx = float(df(xn))
-
-            if abs(dfx) < 1e-12:
-                raise ValueError(
-                    "Turunan mendekati nol."
-                )
-
-            x_next = (
-                xn -
-                fx / dfx
-            )
-
-            error = abs(
-                x_next - xn
-            )
-
-            iterations.append({
-                "iteration": n,
-                "xn": xn,
-                "fx": fx,
-                "dfx": dfx,
-                "x_next": x_next,
-                "error": error
-            })
-
-            xn = x_next
-
-            if error <= tolerance:
-                break
-
-        return (
-            xn,
-            iterations,
-            derivative
-        )
-
-    def plot_function(
-        self,
-        function,
-        root_value
-    ):
+    def _draw_empty_graph(self):
         self.ax.clear()
-
-        f = sp.lambdify(
-            x,
-            function,
-            "numpy"
-        )
-
-        x_values = np.linspace(
-            root_value - 5,
-            root_value + 5,
-            500
-        )
-
-        y_values = f(x_values)
-
-        self.ax.plot(
-            x_values,
-            y_values,
-            label="f(x)"
-        )
-
-        self.ax.axhline(
-            0,
-            linewidth=0.8
-        )
-
-        self.ax.scatter(
-            [root_value],
-            [0],
-            s=60,
-            label="Akar"
-        )
-
+        self._style_axes()
+        self.ax.set_title("Grafik fungsi akan muncul di sini", pad=10)
         self.ax.set_xlabel("x")
         self.ax.set_ylabel("f(x)")
+        self.figure.tight_layout()
+        self.canvas.draw_idle()
 
-        self.ax.set_title(
-            "Grafik Fungsi"
-        )
-
-        self.ax.grid(True)
-        self.ax.legend()
-
-        self.canvas.draw()
+    @staticmethod
+    def _fmt(number):
+        return f"{number:.8g}"
 
     def calculate(self):
         try:
-            function = parse_function(
-                self.function_entry.get()
-            )
-
-            x0 = float(
-                self.x0_entry.get()
-            )
-
-            tolerance = float(
-                self.tolerance_entry.get()
-            )
-
-            max_iterations = int(
-                self.max_iteration_entry.get()
-            )
-
+            function = parse_function(self.function_var.get())
+            derivative = sp.diff(function, x)
+            x0 = as_real_number(self.x0_var.get(), "Tebakan awal x₀")
+            tolerance = as_real_number(self.tol_var.get(), "Toleransi error")
             if tolerance <= 0:
-                raise ValueError(
-                    "Toleransi harus lebih besar dari 0."
-                )
+                raise ValueError("Toleransi error harus lebih besar dari 0.")
+            try:
+                max_iterations = int(self.max_iter_var.get())
+            except ValueError as exc:
+                raise ValueError("Maksimum iterasi harus berupa bilangan bulat.") from exc
+            if max_iterations < 1 or max_iterations > 10000:
+                raise ValueError("Maksimum iterasi harus antara 1 dan 10000.")
 
-            if max_iterations < 1:
-                raise ValueError(
-                    "Maksimum iterasi minimal 1."
-                )
+            f = sp.lambdify(x, function, modules=["numpy"])
+            df = sp.lambdify(x, derivative, modules=["numpy"])
+            rows = []
+            xn = x0
+            converged = False
+            final_error = None
+            reason = "Maksimum iterasi tercapai sebelum toleransi terpenuhi."
 
-            root, iterations, derivative = (
-                self.calculate_newton_raphson(
-                    function,
-                    x0,
-                    tolerance,
-                    max_iterations
-                )
-            )
+            for n in range(1, max_iterations + 1):
+                try:
+                    fxn = as_real_number(f(xn), f"f(x) pada iterasi {n}")
+                    dfxn = as_real_number(df(xn), f"f′(x) pada iterasi {n}")
+                except (ValueError, ZeroDivisionError, OverflowError) as exc:
+                    raise ValueError(f"Perhitungan gagal pada iterasi {n}: {exc}") from exc
 
-            for item in self.table.get_children():
-                self.table.delete(item)
-
-            for row in iterations:
-                self.table.insert(
-                    "",
-                    "end",
-                    values=(
-                        row["iteration"],
-                        f'{row["xn"]:.8f}',
-                        f'{row["fx"]:.8f}',
-                        f'{row["dfx"]:.8f}',
-                        f'{row["x_next"]:.8f}',
-                        f'{row["error"]:.8f}'
+                if abs(dfxn) < 1e-14:
+                    raise ValueError(
+                        f"Turunan f′(x) mendekati nol pada x = {self._fmt(xn)}. "
+                        "Metode Newton-Raphson tidak dapat melanjutkan dari tebakan ini. Coba x₀ lain."
                     )
-                )
 
-            self.result_label.config(
-                text=f"Akar = {root:.10f}"
-            )
+                x_next = xn - fxn / dfxn
+                if not np.isfinite(x_next):
+                    raise ValueError("Perhitungan menghasilkan nilai tak hingga. Coba tebakan awal lain.")
+                error = abs(x_next - xn)
+                rows.append((n, xn, fxn, dfxn, x_next, error))
+                xn = x_next
+                final_error = error
 
-            self.plot_function(
-                function,
-                root
-            )
+                if error <= tolerance:
+                    converged = True
+                    reason = f"Konvergen: error ≤ toleransi ({self._fmt(tolerance)})."
+                    break
 
-        except ValueError as error:
-            messagebox.showerror(
-                "Input Tidak Valid",
-                str(error)
-            )
+            self._show_results(rows, xn, final_error, converged, reason, function, f)
+        except Exception as exc:
+            messagebox.showerror("Input atau perhitungan tidak valid", str(exc), parent=self.root)
+            self.status_var.set("Perhitungan belum berhasil. Periksa input dan coba lagi.")
 
-        except Exception as error:
-            messagebox.showerror(
-                "Error",
-                str(error)
-            )
+    def _show_results(self, rows, root_value, final_error, converged, reason, function, f):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        for n, xn, fxn, dfxn, x_next, error in rows:
+            self.tree.insert("", "end", values=(
+                n, self._fmt(xn), self._fmt(fxn), self._fmt(dfxn), self._fmt(x_next), self._fmt(error)
+            ))
 
-    def reset(self):
-        self.function_entry.delete(
-            0,
-            tk.END
-        )
-
-        self.function_entry.insert(
-            0,
-            "x^2 - 4"
-        )
-
-        self.x0_entry.delete(
-            0,
-            tk.END
-        )
-
-        self.x0_entry.insert(
-            0,
-            "3"
-        )
-
-        self.tolerance_entry.delete(
-            0,
-            tk.END
-        )
-
-        self.tolerance_entry.insert(
-            0,
-            "0.000001"
-        )
-
-        self.max_iteration_entry.delete(
-            0,
-            tk.END
-        )
-
-        self.max_iteration_entry.insert(
-            0,
-            "50"
-        )
-
-        self.result_label.config(
-            text="Belum ada hasil."
-        )
-
-        for item in self.table.get_children():
-            self.table.delete(item)
+        self.root_value.configure(text=self._fmt(root_value))
+        self.error_value.configure(text=self._fmt(final_error) if final_error is not None else "—")
+        self.iter_value.configure(text=str(len(rows)))
+        self.status_var.set(("BERHASIL  ·  " if converged else "BELUM KONVERGEN  ·  ") + reason)
 
         self.ax.clear()
+        self._style_axes()
+        # Rentang grafik mengikuti tebakan awal dan hasil akar, dengan batas aman.
+        left = min(rows[0][1], root_value) - max(2.0, abs(root_value - rows[0][1]) * 0.35)
+        right = max(rows[0][1], root_value) + max(2.0, abs(root_value - rows[0][1]) * 0.35)
+        xs = np.linspace(left, right, 600)
+        try:
+            with np.errstate(all="ignore"):
+                ys = np.asarray(f(xs), dtype=float)
+            if ys.ndim == 0:
+                ys = np.full_like(xs, float(ys))
+            ys = np.where(np.isfinite(ys), ys, np.nan)
+            self.ax.plot(xs, ys, color=ACCENT, linewidth=2.2, label="f(x)")
+            self.ax.scatter([root_value], [0], color=GREEN, s=55, zorder=5, label=f"Akar ≈ {self._fmt(root_value)}")
+            self.ax.axvline(root_value, color=GREEN, linewidth=1, linestyle="--", alpha=0.6)
+            self.ax.legend(facecolor=PANEL, edgecolor="#39465d", labelcolor=TEXT, fontsize=8)
+            self.ax.set_title(f"f(x) = {sp.sstr(function)}", pad=10)
+            self.ax.set_xlabel("x")
+            self.ax.set_ylabel("f(x)")
+            self.ax.set_xlim(left, right)
+            self.figure.tight_layout()
+            self.canvas.draw_idle()
+        except (ValueError, TypeError, OverflowError):
+            self.ax.set_title("Grafik tidak dapat ditampilkan untuk rentang ini", pad=10)
+            self.figure.tight_layout()
+            self.canvas.draw_idle()
 
-        self.ax.grid(True)
-
-        self.canvas.draw()
+    def reset(self):
+        self.function_var.set("x^2 - 4")
+        self.x0_var.set("3")
+        self.tol_var.set("0.000001")
+        self.max_iter_var.set("50")
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        self.root_value.configure(text="—")
+        self.error_value.configure(text="—")
+        self.iter_value.configure(text="—")
+        self.status_var.set("Masukkan parameter lalu klik Hitung akar.")
+        self._draw_empty_graph()
 
 
 def main():
     root = tk.Tk()
-
-    app = NewtonRaphsonApp(root)
-
+    NewtonRaphsonApp(root)
     root.mainloop()
 
 
